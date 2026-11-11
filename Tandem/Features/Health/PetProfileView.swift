@@ -64,18 +64,42 @@ struct PetProfileView: View {
 
                 // Identity
                 HStack(spacing: 16) {
-                    PetAvatar(pet: pet, size: 84)
+                    if canEdit {
+                        Button { showEditPet = true } label: {
+                            PetAvatar(pet: pet, size: 84)
+                                .overlay(alignment: .bottomTrailing) {
+                                    Image(systemName: "camera.fill")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(Theme.onPrimary)
+                                        .frame(width: 28, height: 28)
+                                        .background(Theme.primary, in: Circle())
+                                        .overlay(Circle().strokeBorder(Theme.surface, lineWidth: 2))
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit \(pet.name)'s profile and photo")
+                    } else {
+                        PetAvatar(pet: pet, size: 84)
+                    }
                     VStack(alignment: .leading, spacing: 4) {
                         Text(pet.name).font(.title.weight(.heavy)).foregroundStyle(Theme.text)
-                        Text(pet.summaryLine).font(.subheadline).foregroundStyle(Theme.textSecondary)
+                        Text([pet.species.label, pet.breed].filter { !$0.isEmpty }.joined(separator: " · "))
+                            .font(.subheadline).foregroundStyle(Theme.textSecondary)
+                        let vitals = [pet.ageLabel, pet.weightLabel].compactMap { $0 }.joined(separator: " · ")
+                        if !vitals.isEmpty {
+                            Text(vitals).font(.subheadline).foregroundStyle(Theme.textSecondary)
+                        }
                         if !canEdit { Pill(text: "You're sitting", icon: "person.badge.clock.fill", color: Theme.warning, soft: Theme.warningSoft) }
                     }
                     Spacer(minLength: 0)
                     if canEdit {
-                        Button("Edit") { showEditPet = true }
-                            .font(.subheadline.weight(.semibold))
-                            .buttonStyle(.bordered)
-                            .buttonBorderShape(.capsule)
+                        Button { showEditPet = true } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.onPrimary)
+                        .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
                     }
                 }
                 .card()
@@ -285,7 +309,7 @@ struct ContactRow: View {
             if !phone.isEmpty, let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
                 Link(destination: url) {
                     Image(systemName: "phone.fill")
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.onPrimary)
                         .frame(width: 44, height: 44)
                         .background(Theme.success, in: Circle())
                 }

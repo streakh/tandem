@@ -113,9 +113,10 @@ struct PetEditor: View {
                     if let data = try? await item?.loadTransferable(type: Data.self) { newPhoto = UIImage(data: data) }
                 }
             }
-            .confirmationDialog("Remove \(pet.name)?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            .alert("Remove \(pet.name)?", isPresented: $confirmDelete) {
                 Button("Remove pet and all records", role: .destructive) {
                     Task { await store.delete(pet); await store.loadAll(quiet: true); dismiss() }
+                Button("Cancel", role: .cancel) {}
                 }
             } message: {
                 Text("This deletes their routine, history and health records for everyone. It can't be undone.")
@@ -377,9 +378,10 @@ struct DocumentsSection: View {
             }
             .sheet(item: $viewing) { document in
                 NavigationStack {
-                    ScrollView([.vertical, .horizontal]) {
+                    ScrollView {
                         StorageImage(path: document.storagePath, fill: false)
-                            .frame(maxWidth: UIScreen.main.bounds.width)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .padding(16)
                     }
                     .screenBackground()
                     .navigationTitle(document.title)
@@ -390,6 +392,7 @@ struct DocumentsSection: View {
                             Button("Delete", role: .destructive) {
                                 Task { await store.deleteDocument(document); viewing = nil }
                             }
+                            .tint(Theme.danger)
                         }
                     }
                 }
@@ -413,7 +416,7 @@ struct StorageImage: View {
                     Image(uiImage: image).resizable().scaledToFit()
                 }
             } else {
-                Theme.surfaceMuted.overlay(ProgressView())
+                Theme.surfaceMuted.overlay(ProgressView()).frame(minHeight: fill ? 0 : 260)
             }
         }
         .task(id: path) { image = await store.image(at: path) }

@@ -160,12 +160,12 @@ struct PetSwitcher: View {
                             if remaining > 0 {
                                 Text("\(remaining)")
                                     .font(.caption2.weight(.bold))
-                                    .foregroundStyle(isSelected ? Theme.primary : .white)
+                                    .foregroundStyle(isSelected ? Theme.primary : Theme.onPrimary)
                                     .frame(minWidth: 18, minHeight: 18)
-                                    .background(isSelected ? Color.white : Theme.primary, in: Circle())
+                                    .background(isSelected ? Theme.onPrimary : Theme.primary, in: Circle())
                             }
                         }
-                        .foregroundStyle(isSelected ? .white : Theme.text)
+                        .foregroundStyle(isSelected ? Theme.onPrimary : Theme.text)
                         .padding(.leading, 6)
                         .padding(.trailing, 12)
                         .padding(.vertical, 6)

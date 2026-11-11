@@ -28,6 +28,8 @@ enum Theme {
     static let surfaceMuted = Color(light: 0xEFE8DA, dark: 0x282E2C)
     static let primary = Color(light: 0x2A867A, dark: 0x5EC4B4)
     static let primarySoft = Color(light: 0xDCEFEB, dark: 0x1D3A36)
+    /// Text and icons that sit on top of `primary` or `success` fills.
+    static let onPrimary = Color(light: 0xFFFFFF, dark: 0x0C211E)
     static let sun = Color(light: 0xE9BF45, dark: 0xE9C75A)
     static let sunSoft = Color(light: 0xFBF0CC, dark: 0x38311B)
     static let success = Color(light: 0x3A9460, dark: 0x5FC088)
@@ -66,11 +68,13 @@ extension View {
     /// Standard page: cream background, scrolling content with comfortable margins.
     func screenBackground() -> some View {
         background(Theme.background.ignoresSafeArea())
+            .presentationBackground(Theme.background)
     }
 
     /// Makes a native `Form` sit on the app's cream background.
     func themedForm() -> some View {
         scrollContentBackground(.hidden).background(Theme.background.ignoresSafeArea())
+            .presentationBackground(Theme.background)
     }
 }
 
@@ -83,7 +87,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.onPrimary)
             .frame(maxWidth: .infinity, minHeight: 52)
             .background(tint.opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.35),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous))

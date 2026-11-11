@@ -24,12 +24,12 @@ The app talks to a hosted Supabase project; the URL and publishable key are in `
 
 ### Demo accounts
 
-`supabase/seed.sql` builds a demo household (Alex and Riley, Reese the cat, Biscuit the dog, and Fano the sitter with a care plan that is active today). The three account emails and their shared password are listed at the top of that file. Re-running the file in the Supabase SQL editor resets the demo data and re-dates it to today.
+`supabase/seed.sql` builds a demo household (Streak and Riley, Reese the cat, Biscuit the dog, and Fano the sitter with a care plan that is active today). The three account emails and their shared password are listed at the top of that file. Re-running the file in the Supabase SQL editor resets the demo data and re-dates it to today.
 
 For screenshots and demos, a debug build can sign in straight from launch arguments:
 
 ```
--autoLoginEmail alex@tandem.test -autoLoginPassword <password from seed.sql> -startTab 0
+-autoLoginEmail streak@tandem.test -autoLoginPassword <password from seed.sql> -startTab 0
 ```
 
 ## How it's built

@@ -6,6 +6,7 @@ struct HouseholdView: View {
     @State private var showJoin = false
     @State private var showSetup = false
     @State private var addPetTo: Household?
+    @State private var editingPet: Pet?
     @State private var showInvite: Household?
     @State private var editingName = false
     @State private var nameDraft = ""
@@ -81,6 +82,7 @@ struct HouseholdView: View {
             .sheet(item: $showInvite) { household in InviteMemberSheet(householdId: household.id) }
             .fullScreenCover(isPresented: $showSetup) { SetupFlow() }
             .fullScreenCover(item: $addPetTo) { household in SetupFlow(household: household) }
+            .sheet(item: $editingPet) { pet in PetEditor(pet: pet) }
             .alert("Your name", isPresented: $editingName) {
                 TextField("First name", text: $nameDraft)
                 Button("Save") {
@@ -99,16 +101,18 @@ struct HouseholdView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             }
-            .confirmationDialog(removing.map { $0.userId == store.userId ? "Leave this household?" : "Remove \($0.displayName)?" } ?? "",
-                                isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
+            .alert(removing.map { $0.userId == store.userId ? "Leave this household?" : "Remove \($0.displayName)?" } ?? "",
+                   isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
                 Button(removing?.userId == store.userId ? "Leave household" : "Remove", role: .destructive) {
                     if let member = removing { Task { await store.remove(member: member) } }
                 }
+                Button("Cancel", role: .cancel) {}
             } message: {
                 Text("They'll lose access to the household's pets. Everything they logged stays in the history.")
             }
-            .confirmationDialog("Sign out of Tandem?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+            .alert("Sign out of Tandem?", isPresented: $confirmSignOut) {
                 Button("Sign out", role: .destructive) { Task { await store.signOut() } }
+                Button("Cancel", role: .cancel) {}
             }
             .refreshable { await store.loadAll() }
         }
@@ -135,10 +139,14 @@ struct HouseholdView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 14) {
                     ForEach(pets) { pet in
-                        VStack(spacing: 4) {
-                            PetAvatar(pet: pet, size: 52)
-                            Text(pet.name).font(.caption.weight(.semibold)).foregroundStyle(Theme.text)
+                        Button { editingPet = pet } label: {
+                            VStack(spacing: 4) {
+                                PetAvatar(pet: pet, size: 52)
+                                Text(pet.name).font(.caption.weight(.semibold)).foregroundStyle(Theme.text)
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Edit profile and photo")
                     }
                     Button { addPetTo = household } label: {
                         VStack(spacing: 4) {

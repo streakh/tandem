@@ -189,9 +189,10 @@ struct RoutineEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Save", action: save).disabled(!isValid) }
             }
-            .confirmationDialog("Delete \u{201C}\(routine.title)\u{201D}?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            .alert("Delete \u{201C}\(routine.title)\u{201D}?", isPresented: $confirmDelete) {
                 Button("Delete task", role: .destructive) {
                     Task { await store.delete(routine); dismiss() }
+                Button("Cancel", role: .cancel) {}
                 }
             } message: {
                 Text("Past entries stay in the history.")
@@ -266,7 +267,7 @@ struct WeekdayPicker: View {
                 } label: {
                     Text(Calendar.current.veryShortWeekdaySymbols[day - 1])
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(isOn ? .white : Theme.text)
+                        .foregroundStyle(isOn ? Theme.onPrimary : Theme.text)
                         .frame(maxWidth: .infinity, minHeight: 38)
                         .background(isOn ? Theme.primary : Theme.surfaceMuted, in: Circle())
                 }

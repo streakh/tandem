@@ -104,7 +104,7 @@ struct FilterChip: View {
                 if let icon { Image(systemName: icon).font(.caption) }
                 Text(label).font(.subheadline.weight(.medium))
             }
-            .foregroundStyle(isOn ? .white : Theme.text)
+            .foregroundStyle(isOn ? Theme.onPrimary : Theme.text)
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(isOn ? Theme.primary : Theme.surface, in: Capsule())

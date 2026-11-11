@@ -296,13 +296,15 @@ struct PlanDetailView: View {
             }
         }
         .sheet(item: $draft) { draft in PlanEditor(draft: draft) { _ in } }
-        .confirmationDialog("End \(plan.caregiverName)'s access now?", isPresented: $confirmEnd, titleVisibility: .visible) {
+        .alert("End \(plan.caregiverName)'s access now?", isPresented: $confirmEnd) {
             Button("End access", role: .destructive) { Task { await store.endAccess(for: plan) } }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("They'll stop seeing your pets right away. What they logged stays in your history.")
         }
-        .confirmationDialog("Delete this care plan?", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("Delete this care plan?", isPresented: $confirmDelete) {
             Button("Delete plan", role: .destructive) { Task { await store.deletePlan(plan); dismiss() } }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("The sitter loses access. What they logged stays in your history.")
         }
