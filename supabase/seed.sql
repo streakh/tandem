@@ -2,7 +2,8 @@
 --
 -- Demo accounts (all use the password below; these are throwaway test accounts on fake addresses):
 --   streak@tandem.test   owner of the household
---   riley@tandem.test  household member (roommate)
+--   sam@tandem.test      household member (roommate)
+--   patrick@tandem.test  household member (roommate)
 --   fano@tandem.test   pet sitter with a care plan that is active right now
 --   password: REPLACE_WITH_DEMO_PASSWORD
 
@@ -11,7 +12,7 @@ declare
   pw constant text := 'REPLACE_WITH_DEMO_PASSWORD';
   today date := (now() at time zone 'America/New_York')::date;
   tz constant text := 'America/New_York';
-  streak uuid; riley uuid; fano uuid;
+  streak uuid; sam uuid; patrick uuid; fano uuid;
   hid uuid; reese uuid; biscuit uuid;
   thyroid uuid; drops uuid;
   r_breakfast uuid; r_med_am uuid; r_water uuid; r_dinner uuid; r_med_pm uuid; r_litter uuid; r_drops uuid; r_flea uuid; r_nails uuid;
@@ -25,7 +26,7 @@ begin
   delete from auth.users where email like '%@tandem.test';
 
   -- accounts
-  for u in select * from (values ('streak@tandem.test','Streak'), ('riley@tandem.test','Riley'), ('fano@tandem.test','Fano')) as t(email, name) loop
+  for u in select * from (values ('streak@tandem.test','Streak'), ('sam@tandem.test','Sam'), ('patrick@tandem.test','Patrick'), ('fano@tandem.test','Fano')) as t(email, name) loop
     who := gen_random_uuid();
     insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
                             raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
@@ -37,13 +38,13 @@ begin
     insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
     values (gen_random_uuid(), who, who::text, jsonb_build_object('sub', who::text, 'email', u.email, 'email_verified', true),
             'email', now(), now(), now());
-    if u.name = 'Streak' then streak := who; elsif u.name = 'Riley' then riley := who; else fano := who; end if;
+    if u.name = 'Streak' then streak := who; elsif u.name = 'Sam' then sam := who; elsif u.name = 'Patrick' then patrick := who; else fano := who; end if;
   end loop;
 
   -- household
   insert into public.households (name, created_by) values ('Streak''s household', streak) returning id into hid;
   insert into public.household_members (household_id, user_id, role, display_name)
-  values (hid, streak, 'owner', 'Streak'), (hid, riley, 'member', 'Riley');
+  values (hid, streak, 'owner', 'Streak'), (hid, sam, 'member', 'Sam'), (hid, patrick, 'member', 'Patrick');
 
   -- pets
   insert into public.pets (household_id, name, species, breed, sex, birthdate, weight, weight_unit, notes, microchip,
@@ -51,13 +52,13 @@ begin
   values (hid, 'Reese', 'cat', 'Tabby', 'Female', date '2021-05-14', 10, 'lb',
           'Hides when the doorbell rings. Treats only after dinner. She''s chatty in the morning; if she''s quiet and not eating, something is off.',
           '985112004567812', 'Dr. Patel', 'Shadyside Animal Clinic', '(412) 555-0142', '5600 Walnut St, Pittsburgh',
-          'Riley (roommate)', '(412) 555-0187', now() - interval '2 minutes')
+          'Sam (roommate)', '(412) 555-0187', now() - interval '2 minutes')
   returning id into reese;
   insert into public.pets (household_id, name, species, breed, sex, birthdate, weight, weight_unit, notes,
                            vet_name, vet_clinic, vet_phone, emergency_name, emergency_phone)
   values (hid, 'Biscuit', 'dog', 'Beagle mix', 'Male', date '2019-09-02', 24, 'lb',
           'Pulls toward squirrels, so keep the leash short near the park. Never off-leash.',
-          'Dr. Patel', 'Shadyside Animal Clinic', '(412) 555-0142', 'Riley (roommate)', '(412) 555-0187')
+          'Dr. Patel', 'Shadyside Animal Clinic', '(412) 555-0142', 'Sam (roommate)', '(412) 555-0187')
   returning id into biscuit;
 
   -- health
@@ -117,13 +118,13 @@ begin
                                  sitter_id, sitter_name, created_by, created_by_name, accepted_at, created_at)
   values (hid, '', 'Fano', today - 22, today - 18, '{feeding,water,medication,cleaning}',
           'Reese hides when the doorbell rings. Treats only after dinner.',
-          'Call me first: Streak. If you can''t reach me: Riley, (412) 555-0187.', fano, 'Fano', streak, 'Streak', now() - interval '23 days', now() - interval '24 days')
+          'Call me first: Streak. If you can''t reach me: Sam, (412) 555-0187.', fano, 'Fano', streak, 'Streak', now() - interval '23 days', now() - interval '24 days')
   returning id into plan_past;
   insert into public.care_plans (household_id, title, caregiver_label, start_date, end_date, categories, notes, emergency_notes,
                                  sitter_id, sitter_name, created_by, created_by_name, accepted_at, created_at)
   values (hid, '', 'Fano', today - 1, today + 3, '{feeding,water,medication,cleaning}',
           'Reese hides when the doorbell rings. Treats only after dinner. Spare key is with the neighbor in 2B. Wet food is in the pantry, second shelf.',
-          'Call me first: Streak. If you can''t reach me: Riley, (412) 555-0187. Vet: Shadyside Animal Clinic, (412) 555-0142. If she stops eating for a full day, call the vet; you''re approved for up to $300.',
+          'Call me first: Streak. If you can''t reach me: Sam, (412) 555-0187. Vet: Shadyside Animal Clinic, (412) 555-0142. If she stops eating for a full day, call the vet; you''re approved for up to $300.',
           fano, 'Fano', streak, 'Streak', now() - interval '2 days', now() - interval '3 days')
   returning id into plan_now;
   insert into public.care_plan_pets values (plan_past, reese), (plan_now, reese);
@@ -133,14 +134,14 @@ begin
   insert into public.care_plan_pets select id, reese from public.care_plans where title = 'Thanksgiving trip' and household_id = hid;
   insert into public.care_plan_pets select id, biscuit from public.care_plans where title = 'Thanksgiving trip' and household_id = hid;
 
-  -- two weeks of history, alternating between Streak and Riley (Fano during the plans)
+  -- two weeks of history, Reese alternates between Streak and Sam (Fano during the plans); Biscuit between Streak and Patrick
   for i in 1..14 loop
     d := today - i;
     pid := null;
     if d between today - 22 and today - 18 then who := fano; who_name := 'Fano'; pid := plan_past;
     elsif d >= today - 1 then who := fano; who_name := 'Fano'; pid := plan_now;
     elsif i % 2 = 0 then who := streak; who_name := 'Streak';
-    else who := riley; who_name := 'Riley'; end if;
+    else who := sam; who_name := 'Sam'; end if;
 
     insert into public.care_logs (pet_id, routine_id, category, title, scheduled_for, logged_by, logged_by_name, logged_at, care_plan_id, note)
     values
@@ -158,8 +159,8 @@ begin
       values (reese, r_drops, 'medication', 'Ear drops', d, streak, 'Streak', (d + time '20:05') at time zone tz);
     end if;
 
-    who := case when i % 2 = 0 then streak else riley end;
-    who_name := case when i % 2 = 0 then 'Streak' else 'Riley' end;
+    who := case when i % 2 = 0 then streak else patrick end;
+    who_name := case when i % 2 = 0 then 'Streak' else 'Patrick' end;
     insert into public.care_logs (pet_id, routine_id, category, title, scheduled_for, logged_by, logged_by_name, logged_at, status)
     values
       (biscuit, b_breakfast, 'feeding', 'Breakfast', d, who, who_name, (d + time '07:35') at time zone tz, 'done'),
@@ -172,8 +173,8 @@ begin
   -- occasional tasks done a while back, so "Coming up" has something real in it
   insert into public.care_logs (pet_id, routine_id, category, title, scheduled_for, logged_by, logged_by_name, logged_at) values
     (reese, r_flea, 'medication', 'Flea treatment', today - 24, streak, 'Streak', (today - 24 + time '10:00') at time zone tz),
-    (reese, r_nails, 'grooming', 'Nail trim', today - 16, riley, 'Riley', (today - 16 + time '11:30') at time zone tz),
-    (biscuit, b_bath, 'grooming', 'Bath', today - 33, riley, 'Riley', (today - 33 + time '15:00') at time zone tz);
+    (reese, r_nails, 'grooming', 'Nail trim', today - 16, sam, 'Sam', (today - 16 + time '11:30') at time zone tz),
+    (biscuit, b_bath, 'grooming', 'Bath', today - 33, patrick, 'Patrick', (today - 33 + time '15:00') at time zone tz);
 
   -- this morning: the sitter has done breakfast and the morning med, and left a note
   insert into public.care_logs (pet_id, routine_id, category, title, scheduled_for, logged_by, logged_by_name, logged_at, care_plan_id) values
@@ -181,9 +182,9 @@ begin
     (reese, r_med_am, 'medication', 'Morning med', today, fano, 'Fano', (today + time '07:44') at time zone tz, plan_now);
   insert into public.care_logs (pet_id, category, title, note, scheduled_for, logged_by, logged_by_name, logged_at, care_plan_id) values
     (reese, 'note', 'Seemed off', 'Sneezed a few times after breakfast but ate everything.', today, fano, 'Fano', (today + time '07:55') at time zone tz, plan_now),
-    (reese, 'note', 'Vomiting', 'Small hairball in the hallway, back to normal after.', today - 6, riley, 'Riley', (today - 6 + time '09:15') at time zone tz, null);
+    (reese, 'note', 'Vomiting', 'Small hairball in the hallway, back to normal after.', today - 6, sam, 'Sam', (today - 6 + time '09:15') at time zone tz, null);
   insert into public.care_logs (pet_id, routine_id, category, title, scheduled_for, logged_by, logged_by_name, logged_at) values
-    (biscuit, b_breakfast, 'feeding', 'Breakfast', today, riley, 'Riley', (today + time '07:31') at time zone tz),
-    (biscuit, b_walk_am, 'walk', 'Morning walk', today, riley, 'Riley', (today + time '08:05') at time zone tz),
-    (biscuit, b_water, 'water', 'Fresh water', today, riley, 'Riley', (today + time '07:32') at time zone tz);
+    (biscuit, b_breakfast, 'feeding', 'Breakfast', today, patrick, 'Patrick', (today + time '07:31') at time zone tz),
+    (biscuit, b_walk_am, 'walk', 'Morning walk', today, patrick, 'Patrick', (today + time '08:05') at time zone tz),
+    (biscuit, b_water, 'water', 'Fresh water', today, patrick, 'Patrick', (today + time '07:32') at time zone tz);
 end $$;
