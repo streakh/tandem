@@ -41,7 +41,7 @@ begin
   end loop;
 
   -- household
-  insert into public.households (name, created_by) values ('Streak & Riley''s place', streak) returning id into hid;
+  insert into public.households (name, created_by) values ('Streak''s household', streak) returning id into hid;
   insert into public.household_members (household_id, user_id, role, display_name)
   values (hid, streak, 'owner', 'Streak'), (hid, riley, 'member', 'Riley');
 
