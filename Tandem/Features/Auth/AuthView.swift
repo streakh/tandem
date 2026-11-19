@@ -65,8 +65,7 @@ struct AuthView: View {
                     Divider().padding(.leading, 48)
                     HStack(spacing: 12) {
                         Image(systemName: "lock.fill").foregroundStyle(Theme.textSecondary).frame(width: 24)
-                        SecureField(isCreating ? "Password (6+ characters)" : "Password", text: $password)
-                            .textContentType(isCreating ? .newPassword : .password)
+                        PasswordField(title: isCreating ? "Password (6+ characters)" : "Password", text: $password, isNew: isCreating)
                             .focused($focus, equals: .password)
                             .submitLabel(.go)
                             .onSubmit { submit() }
@@ -214,12 +213,10 @@ struct NewPasswordView: View {
                 Text("Choose a new password").font(.title.weight(.heavy)).foregroundStyle(Theme.text)
                 Text("At least 6 characters.").font(.subheadline).foregroundStyle(Theme.textSecondary)
                 VStack(spacing: 0) {
-                    SecureField("New password", text: $password)
-                        .textContentType(.newPassword)
+                    PasswordField(title: "New password", text: $password, isNew: true)
                         .padding(.horizontal, 16).frame(minHeight: 54)
                     Divider().padding(.leading, 16)
-                    SecureField("Type it again", text: $confirm)
-                        .textContentType(.newPassword)
+                    PasswordField(title: "Type it again", text: $confirm, isNew: true)
                         .padding(.horizontal, 16).frame(minHeight: 54)
                 }
                 .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
@@ -249,6 +246,39 @@ struct NewPasswordView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Not now") { store.needsNewPassword = false } }
             }
+        }
+    }
+}
+
+/// A password box with a show/hide button.
+struct PasswordField: View {
+    let title: String
+    @Binding var text: String
+    /// For a password being chosen (not entered). These opt out of Apple's "strong password" suggestion,
+    /// whose overlay can cover the field and block typing, especially in the simulator.
+    var isNew = false
+    @State private var isVisible = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Group {
+                if isVisible {
+                    TextField(title, text: $text)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } else {
+                    SecureField(title, text: $text)
+                }
+            }
+            .textContentType(isNew ? .oneTimeCode : .password)
+
+            Button { isVisible.toggle() } label: {
+                Image(systemName: isVisible ? "eye.slash" : "eye")
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(width: 36, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isVisible ? "Hide password" : "Show password")
         }
     }
 }
