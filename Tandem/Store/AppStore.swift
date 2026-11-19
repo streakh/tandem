@@ -52,6 +52,8 @@ final class AppStore {
     var selectedPetId: UUID?
     var toast: Toast?
     var pendingInviteCode: String?
+    /// True after someone opens a password-reset link: the app asks for a new password before anything else.
+    var needsNewPassword = false
     var remindersEnabled = UserDefaults.standard.bool(forKey: "remindersEnabled")
 
     @ObservationIgnored private let client = Backend.client
@@ -150,6 +152,32 @@ final class AppStore {
         do {
             try await client.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: idToken, nonce: nonce))
             if let name, !name.isEmpty, (profile?.displayName ?? "").isEmpty { await updateName(name) }
+            return nil
+        } catch { return friendlyMessage(for: error) }
+    }
+
+    /// Emails a reset link that opens the app (`tandem://reset-password`) on the phone it was requested from.
+    func sendPasswordReset(email: String) async -> String? {
+        do {
+            try await client.auth.resetPasswordForEmail(email, redirectTo: URL(string: "\(Config.urlScheme)://reset-password"))
+            return nil
+        } catch { return friendlyMessage(for: error) }
+    }
+
+    func openRecoveryLink(_ url: URL) async {
+        do {
+            try await client.auth.session(from: url)
+            needsNewPassword = true
+        } catch {
+            toast = Toast(message: "That reset link has expired or was already used. Request a new one.", isError: true)
+        }
+    }
+
+    func setNewPassword(_ password: String) async -> String? {
+        do {
+            try await client.auth.update(user: UserAttributes(password: password))
+            needsNewPassword = false
+            toast = Toast(message: "Password updated.")
             return nil
         } catch { return friendlyMessage(for: error) }
     }

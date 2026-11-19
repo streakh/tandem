@@ -60,3 +60,8 @@ The app writes anonymous usage events to the `events` table (`task_completed`, `
 
 - Push notifications to other caregivers. Reminders are local to each phone, so they only know about someone else's check-off once the app has synced.
 - Sign in with Apple. Accounts use email and password.
+
+## Supabase settings the app relies on
+
+- Authentication → Sign In / Providers → Email: "Confirm email" off, so testers can sign up and get straight in.
+- Authentication → URL Configuration → Redirect URLs: add `tandem://**`, so password-reset emails open the app.

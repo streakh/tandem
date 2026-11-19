@@ -6,6 +6,7 @@ struct HistoryView: View {
     let petId: UUID
     @State private var category: CareCategory?
     @State private var person: String?
+    @State private var editingLog: CareLog?
 
     private var pet: Pet? { store.pets.first { $0.id == petId } }
     private var all: [CareLog] { store.logs.filter { $0.petId == petId } }
@@ -48,14 +49,11 @@ struct HistoryView: View {
                     VStack(spacing: 0) {
                         ForEach(Array(logs.sorted { $0.loggedAt > $1.loggedAt }.enumerated()), id: \.element.id) { index, log in
                             if index > 0 { Divider().padding(.leading, 52) }
-                            LogRow(log: log)
-                                .contextMenu {
-                                    if let pet, store.canEdit(pet) || log.loggedBy == store.userId {
-                                        Button("Delete entry", systemImage: "trash", role: .destructive) {
-                                            Task { await store.delete(log) }
-                                        }
-                                    }
-                                }
+                            Button { if store.canModify(log) { editingLog = log } } label: {
+                                LogRow(log: log).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint(store.canModify(log) ? "Edit note or delete" : "")
                         }
                     }
                     .card(padding: 12)
@@ -65,6 +63,7 @@ struct HistoryView: View {
             .padding(.bottom, 24)
         }
         .screenBackground()
+        .sheet(item: $editingLog) { LogEditor(log: $0) }
         .navigationTitle("\(pet?.name ?? "Pet")'s history")
         .navigationBarTitleDisplayMode(.inline)
     }

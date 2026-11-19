@@ -363,6 +363,7 @@ struct TaskDetailSheet: View {
     let task: CareTask
     @State private var note = ""
     @State private var editing: Routine?
+    @State private var editingLog: CareLog?
 
     private var pet: Pet? { store.pets.first { $0.id == task.routine.petId } }
     private var log: CareLog? { store.logs.first { $0.routineId == task.routine.id && $0.scheduledFor == task.day } }
@@ -402,6 +403,11 @@ struct TaskDetailSheet: View {
                             Text("\(log.loggedByName) · \(log.loggedAt.formatted(date: .abbreviated, time: .shortened))")
                                 .font(.subheadline).foregroundStyle(Theme.textSecondary)
                             if !log.note.isEmpty { Text(log.note).font(.body) }
+                            if store.canModify(log) {
+                                Button(log.note.isEmpty ? "Add a note" : "Edit note") { editingLog = log }
+                                    .font(.subheadline.weight(.semibold))
+                                    .padding(.top, 2)
+                            }
                         }
                         .card(fill: log.isDone ? Theme.successSoft : Theme.surface)
 
@@ -444,6 +450,7 @@ struct TaskDetailSheet: View {
                 }
             }
             .sheet(item: $editing) { routine in RoutineEditor(routine: routine, isNew: false) }
+            .sheet(item: $editingLog) { LogEditor(log: $0) }
         }
     }
 }
@@ -511,6 +518,7 @@ struct NoteSheet: View {
 private struct TodayNotes: View {
     @Environment(AppStore.self) private var store
     let petId: UUID
+    @State private var editingLog: CareLog?
 
     var body: some View {
         let notes = store.logs.filter { $0.petId == petId && $0.routineId == nil && $0.scheduledFor == .today }
@@ -518,6 +526,7 @@ private struct TodayNotes: View {
             SectionTitle("Notes today")
             VStack(spacing: 10) {
                 ForEach(notes) { log in
+                    Button { if store.canModify(log) { editingLog = log } } label: {
                     HStack(alignment: .top, spacing: 12) {
                         CategoryIcon(category: .note, size: 40)
                         VStack(alignment: .leading, spacing: 2) {
@@ -529,8 +538,11 @@ private struct TodayNotes: View {
                         Spacer(minLength: 0)
                     }
                     .card(padding: 12, fill: Theme.sunSoft)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
+            .sheet(item: $editingLog) { LogEditor(log: $0) }
         }
     }
 }
@@ -544,7 +556,11 @@ struct ComingUp: View {
     var body: some View {
         let items = Schedule.upcoming(petIds: [petId], routines: store.routines, logs: store.logs, vaccines: store.vaccines)
         if !items.isEmpty {
-            SectionTitle("Coming up")
+            SectionTitle("Coming up") {
+                NavigationLink { UpcomingView(petId: petId) } label: {
+                    Text(items.count > limit ? "See all \(items.count)" : "See all").font(.subheadline.weight(.semibold))
+                }
+            }
             VStack(spacing: 0) {
                 ForEach(Array(items.prefix(limit).enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Divider().padding(.leading, 56) }

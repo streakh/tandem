@@ -15,8 +15,12 @@ struct TandemApp: App {
         }
     }
 
-    /// tandem://join?code=ABC123
+    /// tandem://join?code=ABC123  or  tandem://reset-password?code=…
     private func handle(_ url: URL) {
+        if url.scheme == Config.urlScheme, url.host == "reset-password" {
+            Task { await store.openRecoveryLink(url) }
+            return
+        }
         guard url.scheme == Config.urlScheme,
               let code = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                 .queryItems?.first(where: { $0.name == "code" })?.value, !code.isEmpty else { return }
@@ -65,6 +69,9 @@ struct RootView: View {
             }
         }
         .animation(.spring(duration: 0.35), value: store.toast)
+        .fullScreenCover(isPresented: Binding(get: { store.needsNewPassword }, set: { store.needsNewPassword = $0 })) {
+            NewPasswordView()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, store.userId != nil { store.scheduleRefresh() }
         }
