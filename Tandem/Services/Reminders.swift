@@ -37,6 +37,7 @@ enum Reminders {
                         ? "Due at \(time.label). Tap to check it off."
                         : "\(task.routine.amount) · due at \(time.label)"
                     content.sound = .default
+                    content.userInfo = ["pet_id": pet.id.uuidString]
 
                     let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
                     let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)

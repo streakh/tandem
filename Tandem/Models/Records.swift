@@ -3,6 +3,9 @@ import Foundation
 struct Profile: Codable, Identifiable, Hashable {
     var id: UUID
     var displayName: String = ""
+    /// Push me when someone else checks off a task / leaves a note.
+    var notifyTasks = true
+    var notifyNotes = true
 }
 
 struct Household: Codable, Identifiable, Hashable {

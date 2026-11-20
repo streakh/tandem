@@ -29,6 +29,9 @@ struct Toast: Equatable, Identifiable {
 @MainActor
 @Observable
 final class AppStore {
+    /// One store for the whole app, so the app delegate can reach it for push events.
+    static let shared = AppStore()
+
     enum Phase { case launching, signedOut, onboarding, ready }
 
     var phase: Phase = .launching
@@ -55,6 +58,8 @@ final class AppStore {
     /// True after someone opens a password-reset link: the app asks for a new password before anything else.
     var needsNewPassword = false
     var remindersEnabled = UserDefaults.standard.bool(forKey: "remindersEnabled")
+    var pushEnabled = UserDefaults.standard.bool(forKey: "pushEnabled")
+    @ObservationIgnored private var pushToken = UserDefaults.standard.string(forKey: "pushToken")
 
     @ObservationIgnored private let client = Backend.client
     @ObservationIgnored private var realtimeChannel: RealtimeChannelV2?
@@ -103,6 +108,7 @@ final class AppStore {
             _ = await redeem(code: code)
         }
         updatePhase()
+        if pushEnabled { UIApplication.shared.registerForRemoteNotifications() }
         await subscribeToChanges()
     }
 
@@ -150,8 +156,14 @@ final class AppStore {
 
     func signInWithApple(idToken: String, nonce: String, name: String?) async -> String? {
         do {
-            try await client.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: idToken, nonce: nonce))
-            if let name, !name.isEmpty, (profile?.displayName ?? "").isEmpty { await updateName(name) }
+            let session = try await client.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: idToken, nonce: nonce))
+            // Apple only shares the name on the very first sign-in, so keep it if the profile has none yet.
+            if let name, !name.isEmpty {
+                _ = try? await client.from("profiles").update(["display_name": name], returning: .minimal)
+                    .eq("id", value: session.user.id).eq("display_name", value: "").execute()
+                await loadAll(quiet: true)
+            }
+            track("signed_in_with_apple")
             return nil
         } catch { return friendlyMessage(for: error) }
     }
@@ -183,6 +195,7 @@ final class AppStore {
     }
 
     func signOut() async {
+        await removePushToken()
         try? await client.auth.signOut(scope: .local)
         reset()
     }
@@ -362,6 +375,7 @@ final class AppStore {
         do {
             try await client.from("care_logs").insert(log, returning: .minimal).execute()
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            notifyOthers(["type": "log", "log_id": log.id.uuidString])
             track(status == "done" ? "task_completed" : "task_skipped", ["category": task.routine.category.rawValue])
             Reminders.reschedule(for: self)
         } catch {
@@ -395,6 +409,7 @@ final class AppStore {
         logs.insert(log, at: 0)
         do {
             try await client.from("care_logs").insert(log, returning: .minimal).execute()
+            notifyOthers(["type": "log", "log_id": log.id.uuidString])
             track("note_added")
             return true
         } catch {
@@ -426,6 +441,7 @@ final class AppStore {
             if result.kind == "care_plan", let pet = plans.first(where: { $0.id == result.id }).flatMap({ pets(in: $0).first }) {
                 selectPet(pet.id)
             }
+            if result.kind == "care_plan" { notifyOthers(["type": "plan_joined", "plan_id": result.id.uuidString]) }
             track("invite_accepted", ["kind": result.kind])
             toast = Toast(message: result.kind == "household" ? "You've joined the household." : "Care plan added.")
             return result
@@ -458,8 +474,8 @@ final class AppStore {
     func updateName(_ name: String) async {
         guard let userId else { return }
         do {
-            try await client.from("profiles").upsert(Profile(id: userId, displayName: name), returning: .minimal).execute()
-            profile = Profile(id: userId, displayName: name)
+            try await client.from("profiles").update(["display_name": name], returning: .minimal).eq("id", value: userId).execute()
+            profile?.displayName = name
             await loadAll(quiet: true)
         } catch { report(error) }
     }
@@ -545,6 +561,59 @@ final class AppStore {
               let image = UIImage(data: data) else { return nil }
         imageCache.setObject(image, forKey: path as NSString)
         return image
+    }
+
+    // MARK: - Push notifications
+
+    /// Turns "tell me when other caregivers do something" on or off for this phone.
+    func setPush(enabled: Bool) async {
+        if enabled {
+            if await Reminders.requestPermission() {
+                pushEnabled = true
+                UIApplication.shared.registerForRemoteNotifications()
+            } else {
+                pushEnabled = false
+                toast = Toast(message: "Turn on notifications for Tandem in Settings to get updates.", isError: true)
+            }
+        } else {
+            pushEnabled = false
+            await removePushToken()
+        }
+        UserDefaults.standard.set(pushEnabled, forKey: "pushEnabled")
+        track(pushEnabled ? "push_enabled" : "push_disabled")
+    }
+
+    /// Called by the app delegate once Apple hands this phone its push token.
+    func registerPushToken(_ token: String) async {
+        pushToken = token
+        UserDefaults.standard.set(token, forKey: "pushToken")
+        guard pushEnabled, userId != nil else { return }
+        #if DEBUG
+        let environment = "sandbox"
+        #else
+        let environment = "production"
+        #endif
+        _ = try? await client.rpc("register_device_token", params: ["p_token": token, "p_environment": environment]).execute()
+    }
+
+    private func removePushToken() async {
+        guard let pushToken, userId != nil else { return }
+        _ = try? await client.from("device_tokens").delete(returning: .minimal).eq("token", value: pushToken).execute()
+    }
+
+    func setNotify(tasks: Bool? = nil, notes: Bool? = nil) async {
+        guard let userId else { return }
+        var changes: [String: Bool] = [:]
+        if let tasks { changes["notify_tasks"] = tasks; profile?.notifyTasks = tasks }
+        if let notes { changes["notify_notes"] = notes; profile?.notifyNotes = notes }
+        do {
+            try await client.from("profiles").update(changes, returning: .minimal).eq("id", value: userId).execute()
+        } catch { report(error); await loadAll(quiet: true) }
+    }
+
+    /// Asks the server to push this event to the pet's other caregivers. Best effort: a failure never blocks logging.
+    private func notifyOthers(_ body: [String: String]) {
+        Task { _ = try? await client.functions.invoke("notify", options: FunctionInvokeOptions(body: body)) }
     }
 
     // MARK: - Reminders, metrics, errors

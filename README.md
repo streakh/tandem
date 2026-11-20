@@ -58,10 +58,16 @@ The app writes anonymous usage events to the `events` table (`task_completed`, `
 
 ## Not built yet
 
-- Push notifications to other caregivers. Reminders are local to each phone, so they only know about someone else's check-off once the app has synced.
-- Sign in with Apple. Accounts use email and password.
+- Alerts when a timed task goes overdue and nobody has logged it. Pushes are sent when someone logs care or joins a care plan; overdue alerts would need a scheduled job.
+- Sign in with Google.
 
 ## Supabase settings the app relies on
 
 - Authentication → Sign In / Providers → Email: "Confirm email" off, so testers can sign up and get straight in.
 - Authentication → URL Configuration → Redirect URLs: add `tandem://**`, so password-reset emails open the app.
+- Authentication → Sign In / Providers → Apple: enabled, with the app's bundle ID (`com.streakhoney.tandem`) as a client ID, for Sign in with Apple.
+- Edge Functions → Secrets: `APNS_KEY_ID`, `APNS_TEAM_ID` and `APNS_PRIVATE_KEY` (the contents of the `.p8` push key from the Apple developer account). Without them the `notify` function runs but sends nothing.
+
+## Push notifications
+
+When someone logs a task or a note, the app calls the `notify` edge function (`supabase/functions/notify`). It re-reads the log, finds the pet's other caregivers (household members, plus a sitter whose active plan covers that kind of care), respects each person's notification settings, and sends through Apple's push service. Builds run from Xcode use Apple's sandbox push servers; TestFlight builds use production. The function picks the right one per phone.

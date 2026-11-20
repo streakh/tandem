@@ -60,6 +60,29 @@ struct HouseholdView: View {
                             }
                         }
                         .tint(Theme.primary)
+
+                        Divider().padding(.vertical, 8)
+                        Toggle(isOn: Binding(get: { store.pushEnabled }, set: { on in Task { await store.setPush(enabled: on) } })) {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Updates from other caregivers").foregroundStyle(Theme.text)
+                                    Text("A notification when someone else logs care for your pets.")
+                                        .font(.caption).foregroundStyle(Theme.textSecondary)
+                                }
+                            } icon: {
+                                Image(systemName: "person.2.wave.2.fill").foregroundStyle(Theme.primary)
+                            }
+                        }
+                        .tint(Theme.primary)
+
+                        if store.pushEnabled {
+                            Toggle("When a task is checked off", isOn: Binding(
+                                get: { store.profile?.notifyTasks ?? true }, set: { on in Task { await store.setNotify(tasks: on) } }))
+                                .font(.subheadline).tint(Theme.primary).padding(.leading, 36).padding(.top, 10)
+                            Toggle("When someone leaves a note", isOn: Binding(
+                                get: { store.profile?.notifyNotes ?? true }, set: { on in Task { await store.setNotify(notes: on) } }))
+                                .font(.subheadline).tint(Theme.primary).padding(.leading, 36).padding(.top, 6)
+                        }
                     }
                     .card()
 

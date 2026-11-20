@@ -4,14 +4,39 @@ struct OnboardingView: View {
     @Environment(AppStore.self) private var store
     @State private var showSetup = false
     @State private var showJoin = false
+    @State private var nameDraft = ""
+
+    private var needsName: Bool { (store.profile?.displayName ?? "").isEmpty }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 AppMark(size: 72).padding(.top, 40)
-                Text("Welcome, \(store.myName)")
+                Text(needsName ? "Welcome" : "Welcome, \(store.myName)")
                     .font(.largeTitle.weight(.heavy))
                     .foregroundStyle(Theme.text)
+
+                if needsName {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("What should we call you?").font(.headline).foregroundStyle(Theme.text)
+                        Text("Other caregivers see this next to what you log.")
+                            .font(.subheadline).foregroundStyle(Theme.textSecondary)
+                        HStack(spacing: 10) {
+                            TextField("First name", text: $nameDraft)
+                                .textContentType(.givenName)
+                                .padding(12)
+                                .background(Theme.surfaceMuted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            Button("Save") {
+                                let name = nameDraft.trimmingCharacters(in: .whitespaces)
+                                Task { await store.updateName(name) }
+                            }
+                            .font(.headline)
+                            .disabled(nameDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                    }
+                    .card()
+                }
+
                 Text("How are you starting out?")
                     .font(.body)
                     .foregroundStyle(Theme.textSecondary)

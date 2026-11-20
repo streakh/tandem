@@ -1,4 +1,6 @@
 import SwiftUI
+import AuthenticationServices
+import CryptoKit
 
 struct AuthView: View {
     @Environment(AppStore.self) private var store
@@ -10,6 +12,8 @@ struct AuthView: View {
     @State private var errorMessage: String?
     @FocusState private var focus: Field?
     @State private var showReset = false
+    @State private var appleNonce = ""
+    @Environment(\.colorScheme) private var colorScheme
 
     private enum Field { case name, email, password }
 
@@ -87,6 +91,42 @@ struct AuthView: View {
                 }
                 .buttonStyle(.primary)
                 .disabled(!canSubmit || isWorking)
+
+                HStack(spacing: 12) {
+                    Rectangle().fill(Theme.separator).frame(height: 1)
+                    Text("or").font(.footnote).foregroundStyle(Theme.textSecondary)
+                    Rectangle().fill(Theme.separator).frame(height: 1)
+                }
+
+                SignInWithAppleButton(isCreating ? .signUp : .signIn) { request in
+                    // Supabase checks that the token Apple returns was issued for this exact request.
+                    appleNonce = AppleSignIn.randomNonce()
+                    request.requestedScopes = [.fullName, .email]
+                    request.nonce = AppleSignIn.sha256(appleNonce)
+                } onCompletion: { result in
+                    switch result {
+                    case .success(let authorization):
+                        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                              let token = credential.identityToken.flatMap({ String(data: $0, encoding: .utf8) }) else {
+                            errorMessage = "Sign in with Apple didn't return what we needed. Try again."
+                            return
+                        }
+                        isWorking = true
+                        Task {
+                            errorMessage = await store.signInWithApple(idToken: token, nonce: appleNonce,
+                                                                       name: credential.fullName?.givenName)
+                            isWorking = false
+                        }
+                    case .failure(let error):
+                        if (error as? ASAuthorizationError)?.code != .canceled {
+                            errorMessage = "Sign in with Apple didn't finish. Try again."
+                        }
+                    }
+                }
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .id(isCreating)
 
                 if !isCreating {
                     Button("Forgot password?") { showReset = true }
@@ -280,5 +320,18 @@ struct PasswordField: View {
             .buttonStyle(.plain)
             .accessibilityLabel(isVisible ? "Hide password" : "Show password")
         }
+    }
+}
+
+enum AppleSignIn {
+    /// A random one-time value tying Apple's response to this sign-in attempt.
+    static func randomNonce(length: Int = 32) -> String {
+        let characters = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var generator = SystemRandomNumberGenerator()
+        return String((0..<length).map { _ in characters.randomElement(using: &generator)! })
+    }
+
+    static func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 }

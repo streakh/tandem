@@ -2,7 +2,8 @@ import SwiftUI
 
 @main
 struct TandemApp: App {
-    @State private var store = AppStore()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @State private var store = AppStore.shared
 
     var body: some Scene {
         WindowGroup {
