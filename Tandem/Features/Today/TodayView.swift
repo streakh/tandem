@@ -336,8 +336,11 @@ struct TaskRow: View {
                             .font(.headline)
                             .foregroundStyle(task.isResolved ? Theme.textSecondary : Theme.text)
                             .strikethrough(task.isSkipped)
-                        if !task.routine.amount.isEmpty, !task.isResolved {
-                            Text(task.routine.amount).font(.subheadline).foregroundStyle(Theme.text.opacity(0.8))
+                        // Stays visible once done so the row keeps its height when it's checked off.
+                        if !task.routine.amount.isEmpty {
+                            Text(task.routine.amount)
+                                .font(.subheadline)
+                                .foregroundStyle(task.isResolved ? Theme.textSecondary : Theme.text.opacity(0.8))
                         }
                         HStack(spacing: 4) {
                             if state == .overdue || state == .dueNow {
