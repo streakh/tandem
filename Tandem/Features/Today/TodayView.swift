@@ -228,9 +228,13 @@ struct ProgressRing: View {
     let done: Int
     let total: Int
     var size: CGFloat = 62
+    @State private var burst = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var isComplete: Bool { total > 0 && done >= total }
 
     var body: some View {
-        let complete = total > 0 && done >= total
+        let complete = isComplete
         ZStack {
             Circle().stroke(Theme.separator, lineWidth: 6)
             Circle()
@@ -255,6 +259,10 @@ struct ProgressRing: View {
             }
         }
         .frame(width: size, height: size)
+        .overlay { PawBurst(trigger: burst) }
+        .onChange(of: isComplete) { was, now in
+            if now, !was, !reduceMotion { burst += 1 }
+        }
         .animation(.snappy, value: done)
         .accessibilityLabel("\(done) of \(total) tasks done")
     }
@@ -314,6 +322,8 @@ struct TaskRow: View {
     let canLog: Bool
     let onToggle: () -> Void
     let onOpen: () -> Void
+    @State private var stamp = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let state: CareTask.State = canLog ? task.state(now: now) : .anytime
@@ -352,8 +362,12 @@ struct TaskRow: View {
                     .foregroundStyle(task.isDone ? Theme.success : (task.isSkipped ? Theme.textSecondary : Theme.primary))
                     .frame(width: 48, height: 48)
                     .contentTransition(.symbolEffect(.replace))
+                    .overlay { PawStamp(trigger: stamp) }
             }
             .buttonStyle(.plain)
+            .onChange(of: task.isDone) { wasDone, isDone in
+                if isDone, !wasDone, !reduceMotion { stamp += 1 }
+            }
             .disabled(!canLog)
             .opacity(canLog ? 1 : 0)
             .accessibilityLabel(task.isResolved ? "Undo \(task.routine.title)" : "Mark \(task.routine.title) done")

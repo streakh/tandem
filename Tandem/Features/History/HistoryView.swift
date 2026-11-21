@@ -22,6 +22,8 @@ struct HistoryView: View {
 
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
+                ConsistencyGrid(petId: petId)
+
                 if !all.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
