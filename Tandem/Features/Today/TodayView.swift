@@ -190,44 +190,73 @@ private struct HeroCard: View {
     private var done: Int { tasks.filter(\.isResolved).count }
     private var lastLog: CareLog? { store.logs.first { $0.petId == pet.id && $0.scheduledFor == .today } }
 
+    private var statusLine: String {
+        if let previewStart {
+            return "Here's the daily routine. You can start checking things off \(previewStart.relativeLabel == "Tomorrow" ? "tomorrow" : "on \(previewStart.relativeLabel)")."
+        }
+        if tasks.isEmpty { return Date.now.formatted(.dateTime.weekday(.wide).month().day()) }
+        if done == tasks.count { return "Everything is done for today." }
+        if let lastLog {
+            return "Last logged by \(lastLog.loggedByName.isEmpty ? "someone" : lastLog.loggedByName) at \(lastLog.loggedAt.formatted(date: .omitted, time: .shortened))"
+        }
+        return "Nothing logged yet today."
+    }
+
+    /// Sits directly on the page rather than in a card: the pet, the day, and one ring that answers "how much is left?".
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
-                PetAvatar(pet: pet, size: 64)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(pet.name).font(.title2.weight(.heavy)).foregroundStyle(.white)
-                    Text(Date.now.formatted(.dateTime.weekday(.wide).month().day()))
-                        .font(.subheadline).foregroundStyle(.white.opacity(0.85))
-                }
-                Spacer()
+        HStack(spacing: 14) {
+            PetAvatar(pet: pet, size: 60)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(pet.name).font(.title.weight(.heavy)).foregroundStyle(Theme.text)
+                Text(statusLine)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            if let previewStart {
-                Text("Here's the daily routine. You can start checking things off \(previewStart.relativeLabel == "Tomorrow" ? "tomorrow" : "on \(previewStart.relativeLabel)").")
-                    .font(.subheadline.weight(.medium)).foregroundStyle(.white)
-            } else if !tasks.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(done == tasks.count ? "All done for today" : "\(done) of \(tasks.count) done")
-                            .font(.headline).foregroundStyle(.white)
-                        Spacer()
-                        if let lastLog {
-                            Text("Last: \(lastLog.loggedByName), \(lastLog.loggedAt.formatted(date: .omitted, time: .shortened))")
-                                .font(.caption).foregroundStyle(.white.opacity(0.85))
-                        }
-                    }
-                    ProgressView(value: Double(done), total: Double(max(tasks.count, 1)))
-                        .tint(.white)
-                        .background(.white.opacity(0.25), in: Capsule())
-                        .animation(.snappy, value: done)
+            Spacer(minLength: 8)
+            if previewStart == nil, !tasks.isEmpty {
+                ProgressRing(done: done, total: tasks.count)
+            }
+        }
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// How much of today is done. Closes into a checkmark when nothing is left.
+struct ProgressRing: View {
+    let done: Int
+    let total: Int
+    var size: CGFloat = 62
+
+    var body: some View {
+        let complete = total > 0 && done >= total
+        ZStack {
+            Circle().stroke(Theme.separator, lineWidth: 6)
+            Circle()
+                .trim(from: 0, to: total == 0 ? 0 : Double(done) / Double(total))
+                .stroke(complete ? Theme.success : Theme.primary, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            if complete {
+                Image(systemName: "checkmark")
+                    .font(.system(size: size * 0.36, weight: .bold))
+                    .foregroundStyle(Theme.success)
+                    .transition(.scale.combined(with: .opacity))
+            } else {
+                VStack(spacing: -1) {
+                    Text("\(done)")
+                        .font(.system(size: size * 0.34, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.text)
+                        .contentTransition(.numericText())
+                    Text("of \(total)")
+                        .font(.system(size: size * 0.18, weight: .medium, design: .rounded))
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
         }
-        .padding(18)
-        .background(
-            LinearGradient(colors: [Color(hex: 0x2A867A), Color(hex: 0x1F6E78)], startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-        )
-        .accessibilityElement(children: .combine)
+        .frame(width: size, height: size)
+        .animation(.snappy, value: done)
+        .accessibilityLabel("\(done) of \(total) tasks done")
     }
 }
 
