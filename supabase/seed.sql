@@ -1,11 +1,14 @@
 -- Demo data for testing and the final presentation. Safe to re-run: it rebuilds the demo household from scratch.
 --
--- Demo accounts (all use the password below; these are throwaway test accounts on fake addresses):
+-- Demo accounts (throwaway test accounts on fake addresses, all sharing one password):
 --   streak@tandem.test   owner of the household
 --   sam@tandem.test      household member (roommate)
 --   patrick@tandem.test  household member (roommate)
---   fano@tandem.test   pet sitter with a care plan that is active right now
---   password: REPLACE_WITH_DEMO_PASSWORD
+--   fano@tandem.test     pet sitter with a care plan that is active right now
+--
+-- The password is deliberately not in this file. Before running, replace REPLACE_WITH_DEMO_PASSWORD
+-- below with the shared demo password (kept in supabase/.demo-password, which git ignores).
+-- Don't commit the file with the real password in it.
 
 do $$
 declare
@@ -21,6 +24,10 @@ declare
   d date; i int; who uuid; who_name text; pid uuid;
   u record;
 begin
+  if pw = 'REPLACE' || '_WITH_DEMO_PASSWORD' then
+    raise exception 'Set the demo password at the top of seed.sql before running it.';
+  end if;
+
   -- reset
   delete from public.households where created_by in (select id from auth.users where email like '%@tandem.test');
   delete from auth.users where email like '%@tandem.test';

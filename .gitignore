@@ -7,3 +7,6 @@ build/
 .swiftpm/
 *.p8
 .env
+
+# Demo account password (never commit)
+supabase/.demo-password

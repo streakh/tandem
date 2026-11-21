@@ -39,9 +39,9 @@ The app talks to a hosted Supabase project. Its URL and publishable key are in `
 
 ### Demo data
 
-`supabase/seed.sql` builds a demo household: an owner, two roommates, two pets with two weeks of history, and a sitter whose care plan is active today. The account emails and their shared password are in the comment at the top of that file.
+`supabase/seed.sql` builds a demo household: an owner, two roommates, two pets with two weeks of history, and a sitter whose care plan is active today. The account emails are listed at the top of that file. Their shared password is not in the repo; ask the project owner for it, or set your own when you run the seed against your own Supabase project.
 
-Running the file in the Supabase SQL editor rebuilds the demo household from scratch and re-dates everything to today. It only touches the demo accounts.
+To rebuild the demo household, paste the file into the Supabase SQL editor, replace `REPLACE_WITH_DEMO_PASSWORD` with the password, and run it. Everything is re-dated to today, and only the demo accounts are touched.
 
 ### Running on a phone
 
